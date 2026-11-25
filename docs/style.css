@@ -1,0 +1,88 @@
+/* Colors follow the Telegram theme (light or dark) when opened inside Telegram. */
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --text: var(--tg-theme-text-color, #1f2328);
+  --hint: var(--tg-theme-hint-color, #6b7280);
+  --card: var(--tg-theme-secondary-bg-color, #f2f3f5);
+  --btn: var(--tg-theme-button-color, #2481cc);
+  --btn-text: var(--tg-theme-button-text-color, #ffffff);
+  --line: rgba(127, 127, 127, 0.25);
+  --busy: rgba(220, 38, 38, 0.14);
+  --mine: rgba(37, 99, 235, 0.18);
+  --free: rgba(22, 163, 74, 0.10);
+  --closed: rgba(127, 127, 127, 0.12);
+  --warn: rgba(217, 119, 6, 0.18);
+  --ok: rgba(22, 163, 74, 0.16);
+  --err: rgba(220, 38, 38, 0.16);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 12px 16px 32px;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Khmer", sans-serif;
+}
+html[lang="km"] body { font-family: "Noto Sans Khmer", system-ui, sans-serif; line-height: 1.7; }
+
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+button, input, select { font: inherit; color: inherit; }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.chip {
+  border: 1px solid var(--line); background: var(--card); border-radius: 999px;
+  padding: 4px 12px; cursor: pointer; white-space: nowrap;
+}
+
+.daynav { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.nav { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); font-size: 20px; cursor: pointer; }
+.daypick { position: relative; flex: 1; text-align: center; font-weight: 600; padding: 6px 4px; border-radius: 8px; background: var(--card); min-width: 0; }
+.daypick input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+
+.notice { padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; }
+.notice.ok { background: var(--ok); }
+.notice.error { background: var(--err); }
+.holiday { padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; background: var(--warn); font-weight: 600; }
+
+.gridwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.grid { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.grid th, .grid td { border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); padding: 4px 6px; vertical-align: top; }
+.grid thead th { background: var(--card); font-weight: 600; text-align: center; }
+.grid th:first-child, .grid td:first-child { border-left: 0; }
+.grid th.time { width: 54px; font-weight: 400; color: var(--hint); text-align: right; }
+.grid thead th:first-child { width: 54px; }
+.grid td { height: 34px; }
+.grid td.free { background: var(--free); cursor: pointer; }
+.grid td.free:hover, .grid td.free:focus { outline: 2px solid var(--btn); outline-offset: -2px; }
+.grid td.busy { background: var(--busy); }
+.grid td.busy.mine { background: var(--mine); }
+.grid td.closed { background: var(--closed); }
+.who { font-weight: 600; overflow-wrap: anywhere; }
+.sub { color: var(--hint); font-size: 12px; overflow-wrap: anywhere; }
+
+.hint { color: var(--hint); font-size: 13px; margin: 6px 0 10px; }
+.primary { background: var(--btn); color: var(--btn-text); border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+.primary:disabled { opacity: 0.6; }
+.wide { width: 100%; }
+
+.card { background: var(--card); border-radius: 12px; padding: 14px; margin-top: 14px; }
+form label { display: block; margin-bottom: 10px; }
+form label > span { display: block; font-size: 13px; color: var(--hint); margin-bottom: 3px; }
+form input, form select {
+  width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg);
+}
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.row button { border-radius: 10px; padding: 10px 16px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; }
+.row button.primary { border: 0; background: var(--btn); }
+
+.result { padding: 10px 12px; border-radius: 8px; background: var(--err); margin-bottom: 10px; }
+.result ul { margin: 6px 0 0; padding-left: 18px; }
+
+.mine { list-style: none; margin: 0; padding: 0; }
+.mine li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.mine li:first-child { border-top: 0; }
+.mine li.empty { color: var(--hint); }
+.danger { border: 1px solid rgba(220, 38, 38, 0.5); color: #dc2626; background: transparent; border-radius: 8px; padding: 6px 12px; cursor: pointer; }

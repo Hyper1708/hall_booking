@@ -1,0 +1,9 @@
+{
+  "name": "hall-booking",
+  "private": true,
+  "description": "Hall booking for a Telegram group: mini app + bot on Google Apps Script",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:ui": "node test/ui.smoke.js"
+  }
+}

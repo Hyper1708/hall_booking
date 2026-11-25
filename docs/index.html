@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hall booking</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <h1 data-t="title"></h1>
+    <button id="lang" class="chip" type="button" aria-label="Language"></button>
+  </header>
+
+  <div id="notice" class="notice" role="status" hidden></div>
+
+  <nav class="daynav">
+    <button id="prev" class="nav" type="button">‹</button>
+    <label class="daypick">
+      <span id="dayLabel"></span>
+      <input id="day" type="date">
+    </label>
+    <button id="next" class="nav" type="button">›</button>
+    <button id="today" class="chip" type="button" data-t="today"></button>
+  </nav>
+
+  <div id="holiday" class="holiday" hidden></div>
+  <div class="gridwrap"><table id="grid" class="grid"></table></div>
+  <p class="hint" data-t="hint"></p>
+  <button id="openForm" class="primary wide" type="button" data-t="bookHall"></button>
+
+  <section id="formbox" class="card" hidden>
+    <form id="form" novalidate>
+      <h2 data-t="bookHall"></h2>
+      <label><span data-t="hall"></span><select id="f-hall"></select></label>
+      <label><span data-t="date"></span><input id="f-date" type="date"></label>
+      <div class="row">
+        <label><span data-t="start"></span><select id="f-start"></select></label>
+        <label><span data-t="end"></span><select id="f-end"></select></label>
+      </div>
+      <label><span data-t="name"></span><input id="f-name" maxlength="60" autocomplete="name"></label>
+      <label><span data-t="department"></span><input id="f-dept" maxlength="60"></label>
+      <div id="result" class="result" hidden></div>
+      <div class="row">
+        <button id="f-submit" class="primary" type="submit" data-t="submit"></button>
+        <button id="f-close" type="button" data-t="close"></button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2 data-t="myBookings"></h2>
+    <ul id="mine" class="mine"></ul>
+  </section>
+
+  <script src="config.js"></script>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

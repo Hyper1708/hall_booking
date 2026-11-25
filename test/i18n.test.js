@@ -12,6 +12,7 @@ test('every language has every key of the English block', () => {
     const missing = keys.filter(k => I18N[lang][k] == null);
     assert.deepEqual(missing, [], lang + ' is missing keys');
     assert.equal(I18N[lang].days.length, 7, lang + ' days');
+    assert.equal(I18N[lang].daysShort.length, 7, lang + ' daysShort');
     assert.equal(I18N[lang].months.length, 12, lang + ' months');
   });
 });

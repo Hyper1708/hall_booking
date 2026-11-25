@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;600&display=swap">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
   <header class="bar">
@@ -19,15 +19,29 @@
   <div id="notice" class="notice" role="status" hidden></div>
 
   <nav class="daynav">
-    <button id="prev" class="nav" type="button">‹</button>
-    <label class="daypick">
-      <span id="dayLabel"></span>
-      <input id="day" type="date">
-    </label>
-    <button id="next" class="nav" type="button">›</button>
+    <button id="prev" class="nav" type="button" aria-label="‹">‹</button>
+    <button id="dayBtn" class="daypick" type="button" aria-expanded="false" aria-controls="cal">
+      <span id="dayLabel"></span><span class="caret" aria-hidden="true">▾</span>
+    </button>
+    <button id="next" class="nav" type="button" aria-label="›">›</button>
     <button id="today" class="chip" type="button" data-t="today"></button>
   </nav>
 
+  <section id="cal" class="cal" hidden>
+    <div class="cal-head">
+      <button id="calPrev" class="nav" type="button" aria-label="‹">‹</button>
+      <strong id="calTitle"></strong>
+      <button id="calNext" class="nav" type="button" aria-label="›">›</button>
+    </div>
+    <div id="calGrid" class="cal-grid"></div>
+    <p id="calLoading" class="hint" data-t="loading" hidden></p>
+    <div class="legend">
+      <span><i class="swatch dotkey"></i><span data-t="legendBooked"></span></span>
+      <span><i class="swatch holkey"></i><span data-t="holiday"></span></span>
+    </div>
+  </section>
+
+  <p id="loading" class="hint" data-t="loading" hidden></p>
   <div id="holiday" class="holiday" hidden></div>
   <div class="gridwrap"><table id="grid" class="grid"></table></div>
   <p class="hint" data-t="hint"></p>
@@ -57,8 +71,9 @@
     <ul id="mine" class="mine"></ul>
   </section>
 
-  <script src="config.js"></script>
-  <script src="i18n.js"></script>
-  <script src="app.js"></script>
+  <!-- ?v= makes phones load the new files after an update. Raise it on every change. -->
+  <script src="config.js?v=2"></script>
+  <script src="i18n.js?v=2"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

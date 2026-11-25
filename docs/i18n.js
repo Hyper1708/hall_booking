@@ -48,7 +48,10 @@ window.I18N = {
     e_SERVER: 'Something went wrong. Try again.',
     e_NETWORK: 'No connection. Try again.',
     e_CONFIG: 'Not set up yet: the API address is missing in config.js.',
+    legendBooked: 'Has bookings',
+    nBookings: '{n} booking(s)',
     days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    daysShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
   },
   km: {
@@ -96,7 +99,10 @@ window.I18N = {
     e_SERVER: 'មានបញ្ហា។ សូមព្យាយាមម្តងទៀត។',
     e_NETWORK: 'គ្មានការតភ្ជាប់។ សូមព្យាយាមម្តងទៀត។',
     e_CONFIG: 'មិនទាន់រៀបចំរួច៖ គ្មានអាសយដ្ឋាន API នៅក្នុង config.js ទេ។',
+    legendBooked: 'មានការកក់',
+    nBookings: 'ការកក់ {n}',
     days: ['អាទិត្យ', 'ច័ន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍'],
+    daysShort: ['អា', 'ច', 'អ', 'ពុ', 'ព្រ', 'សុ', 'ស'],
     months: ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'],
   },
 };

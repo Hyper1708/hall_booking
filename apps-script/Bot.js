@@ -46,7 +46,12 @@ function pollBot() {
  */
 function handleUpdate_(update, keywords) {
   const msg = update.message;
-  if (!msg || typeof msg.text !== 'string' || !msg.chat) return;
+  if (!msg || !msg.chat) return;
+  // Telegram's notices that the group became a supergroup with a new id.
+  const group = String(prop_('GROUP_CHAT_ID'));
+  if (msg.migrate_to_chat_id && String(msg.chat.id) === group) { setGroupId_(msg.migrate_to_chat_id); return; }
+  if (msg.migrate_from_chat_id && String(msg.migrate_from_chat_id) === group) { setGroupId_(msg.chat.id); return; }
+  if (typeof msg.text !== 'string') return;
   if (String(msg.chat.id) !== String(prop_('GROUP_CHAT_ID'))) return;
   if (Core.isRemindRequest(msg.text, prop_('BOT_USERNAME'), keywords)) sendWeekReport_(msg.message_id);
 }

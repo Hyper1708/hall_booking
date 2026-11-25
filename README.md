@@ -78,6 +78,8 @@ Why a timer and not a Telegram webhook: Apps Script answers every web app reques
 
 Safety: the bot answers only in the group in `GROUP_CHAT_ID`, only to `/remind` or a message that is exactly a keyword, and handles each message once.
 
+**The group got a new ID.** Telegram turns a group into a "supergroup" (with a new ID) when an admin gets custom rights, or past 200 members. The code notices this from Telegram's answer and saves the new `GROUP_CHAT_ID` by itself. If the mini app suddenly says "Only members of the group can use this app", click **Hall booking > Post today's list now** once: that call finds and saves the new ID.
+
 ### 4. Publish the mini app page
 1. On GitHub, make this repository **public** (free GitHub Pages needs it). No secret is in the code.
 2. **Settings > Pages > Deploy from a branch > main, /docs**.

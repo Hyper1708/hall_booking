@@ -55,6 +55,8 @@ function makeGas(opts) {
         const method = url.split('/').pop();
         const payload = JSON.parse(o.payload);
         sent.push({ method, payload });
+        const custom = opts.respond && opts.respond(method, payload);
+        if (custom) return { getContentText: () => JSON.stringify(custom), getResponseCode: () => (custom.ok ? 200 : 400) };
         if (opts.fail && opts.fail(method, payload)) {
           return { getContentText: () => JSON.stringify({ ok: false, description: 'Bad Request: test failure' }), getResponseCode: () => 400 };
         }
@@ -161,6 +163,29 @@ test('mini app: bad signature refused, bad JSON is a server error, Telegram-styl
   assert.deepEqual(JSON.parse(post('not json').body), { ok: false, error: 'SERVER' });
   assert.deepEqual(JSON.parse(post(update(1, '/remind')).body), { ok: false, error: 'AUTH' });
   assert.equal(g.sent.length, 0);
+});
+
+test('group upgraded to a supergroup: new id is saved from Telegram\'s error and the call is sent again', () => {
+  const NEW = -100777;
+  const moved = { ok: false, error_code: 400, description: 'Bad Request: group chat was upgraded to a supergroup chat', parameters: { migrate_to_chat_id: NEW } };
+  const g = makeGas({ respond: (m, p) => (String(p.chat_id) === GROUP ? moved : null) });
+  assert.equal(g.ctx.isGroupMember_(7), true, 'member check works again');
+  assert.equal(g.props.GROUP_CHAT_ID, String(NEW));
+  assert.deepEqual(g.sent.map(s => [s.method, String(s.payload.chat_id)]), [['getChatMember', GROUP], ['getChatMember', String(NEW)]]);
+  g.ctx.notify_('hi');
+  assert.equal(String(g.sent[g.sent.length - 1].payload.chat_id), String(NEW), 'posts go to the new id');
+});
+
+test('group upgraded: the notice in the updates also saves the new id, then /remind there is answered', () => {
+  const g = makeGas();
+  g.queue.push(
+    { update_id: 1, message: { message_id: 1, chat: { id: Number(GROUP) }, migrate_to_chat_id: -100777 } },
+    update(2, '/remind', '-100777'),
+  );
+  g.ctx.pollBot();
+  assert.equal(g.props.GROUP_CHAT_ID, '-100777');
+  assert.equal(g.replies().length, 1);
+  assert.equal(String(g.replies()[0].payload.chat_id), '-100777');
 });
 
 test('mini app: a correctly signed request from a group member gets the month', () => {

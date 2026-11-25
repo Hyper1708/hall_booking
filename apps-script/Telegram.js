@@ -2,7 +2,7 @@
  * Telegram Bot API calls. The bot only sends; it needs no webhook.
  * BOT_TOKEN and GROUP_CHAT_ID live in Script Properties, never in code.
  */
-function tg_(method, payload) {
+function tg_(method, payload, retried) {
   const token = prop_('BOT_TOKEN');
   if (!token) throw new Error('BOT_TOKEN is not set in Script Properties.');
   const res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/' + method, {
@@ -17,7 +17,19 @@ function tg_(method, payload) {
     // Never log the URL: it contains the token.
     console.warn('Telegram ' + method + ' failed: HTTP ' + res.getResponseCode() + ' ' + ((data && data.description) || ''));
   }
+  // The group was upgraded to a supergroup and got a new id. Telegram does this
+  // when an admin gets custom rights, or past 200 members. Save the new id and send again.
+  const moved = data && !data.ok && data.parameters && data.parameters.migrate_to_chat_id;
+  if (moved && !retried && payload && String(payload.chat_id) === String(prop_('GROUP_CHAT_ID'))) {
+    setGroupId_(moved);
+    return tg_(method, Object.assign({}, payload, { chat_id: moved }), true);
+  }
   return data;
+}
+
+function setGroupId_(id) {
+  PropertiesService.getScriptProperties().setProperty('GROUP_CHAT_ID', String(id));
+  console.log('The group has a new id (supergroup); GROUP_CHAT_ID updated.');
 }
 
 /** Post to the group. A Telegram failure is logged, never thrown: the booking itself already succeeded. */

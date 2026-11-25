@@ -21,7 +21,8 @@ const req = (extra) => Object.assign({ hall: 'H2', date: '2026-12-02', start: '1
 const codes = r => r.reasons.map(x => x.code);
 
 test('settings defaults and bounds', () => {
-  assert.deepEqual(settings, { openHour: 7, closeHour: 18, maxDaysAhead: 180, noticeDays: 3, morningHour: 7, botLang: 'both' });
+  assert.deepEqual(settings, { openHour: 7, closeHour: 18, maxDaysAhead: 180, noticeDays: 3, morningHour: 7, botLang: 'both', remindDays: 7 });
+  assert.equal(Core.normalizeSettings({ REMIND_DAYS: '99' }).remindDays, 31);
   const s = Core.normalizeSettings({ OPEN_HOUR: '20', CLOSE_HOUR: '5', BOT_LANG: 'fr' });
   assert.equal(s.openHour, 20);
   assert.equal(s.closeHour, 21);
@@ -193,6 +194,57 @@ test('daily digest: today for cleaners, then notice days ahead, with holiday lin
     '<b>Bookings in 3 days</b>', 'Wed 2 Dec 2026', 'Holiday: Test Day', '<b>Hall 1</b>: —', '<b>Hall 2</b>',
     '• 09:00–11:00 Finance (Dara)',
   ].join('\n'));
+});
+
+test('/remind: 7 days from today, sorted by time, holidays marked, empty days short', () => {
+  const list = [
+    { hall: 'H2', date: '2026-11-26', start: '13:00', end: '14:00', name: 'B', department: 'IT', status: 'active' },
+    { hall: 'H1', date: '2026-11-26', start: '08:00', end: '10:00', name: 'A', department: 'HR', status: 'active' },
+    { hall: 'H1', date: '2026-11-27', start: '08:00', end: '10:00', name: 'X', department: 'Gone', status: 'cancelled' },
+    { hall: 'H1', date: '2026-12-02', start: '09:00', end: '10:00', name: 'Z', department: 'R&D', status: 'active' },
+    { hall: 'H1', date: '2026-12-03', start: '09:00', end: '10:00', name: 'Late', department: 'Out', status: 'active' },
+  ];
+  const text = Core.weekReport({
+    today: '2026-11-26', days: 7, lang: 'en', halls,
+    bookings: list, holidays: { '2026-11-28': { en: 'Test Day', km: 'ថ្ងៃសាកល្បង' } },
+  });
+  assert.equal(text, [
+    '<b>Bookings for the next 7 days</b>',
+    '<b>Thu 26 Nov 2026</b>\n• Hall 1 08:00–10:00 HR (A)\n• Hall 2 13:00–14:00 IT (B)',
+    '<b>Fri 27 Nov 2026</b>: —',
+    '<b>Sat 28 Nov 2026</b>: —\nHoliday: Test Day',
+    '<b>Sun 29 Nov 2026</b>: —',
+    '<b>Mon 30 Nov 2026</b>: —',
+    '<b>Tue 1 Dec 2026</b>: —',
+    '<b>Wed 2 Dec 2026</b>\n• Hall 1 09:00–10:00 R&amp;D (Z)',
+  ].join('\n\n'));
+  assert.match(Core.weekReport({ today: '2026-11-26', days: 1, lang: 'km', halls, bookings: list, holidays: {} }),
+    /^<b>ការកក់ 1 ថ្ងៃខាងមុខ<\/b>\n\n<b>ព្រហស្បតិ៍ 26 វិច្ឆិកា 2026<\/b>\n• សាល ១ 08:00–10:00/);
+});
+
+test('/remind: a very long week is cut at a day boundary below Telegram\'s limit', () => {
+  const many = [];
+  for (let d = 0; d < 7; d++) {
+    for (let h = 7; h < 18; h++) {
+      many.push({ hall: 'H1', date: Core.addDays('2026-11-26', d), start: (h < 10 ? '0' : '') + h + ':00', end: (h + 1 < 10 ? '0' : '') + (h + 1) + ':00',
+        name: 'Someone with a long name', department: 'A department with a rather long name', status: 'active' });
+    }
+  }
+  const text = Core.weekReport({ today: '2026-11-26', days: 7, lang: 'both', halls, bookings: many, holidays: {} });
+  assert.ok(text.length <= 3900, 'length ' + text.length);
+  assert.ok(text.endsWith('\n\n…'));
+  assert.equal((text.match(/<b>/g) || []).length, (text.match(/<\/b>/g) || []).length, 'no tag cut in half');
+});
+
+test('command parsing', () => {
+  assert.equal(Core.parseCommand('/remind', 'HRU_info_bot'), 'remind');
+  assert.equal(Core.parseCommand('/remind@HRU_info_bot', 'HRU_info_bot'), 'remind');
+  assert.equal(Core.parseCommand('/REMIND@hru_INFO_bot please', 'HRU_info_bot'), 'remind');
+  assert.equal(Core.parseCommand('/remind@OtherBot', 'HRU_info_bot'), null);
+  assert.equal(Core.parseCommand('/remind@HRU_info_bot', ''), null);
+  assert.equal(Core.parseCommand('please /remind', 'HRU_info_bot'), null);
+  assert.equal(Core.parseCommand('/reminder', 'HRU_info_bot'), 'reminder');
+  assert.equal(Core.parseCommand(undefined, 'x'), null);
 });
 
 // ---------------------------------------------------------------------- auth

@@ -64,6 +64,7 @@ var Core = (function () {
       noticeDays: clamp(int(raw.NOTICE_DAYS, 3), 1, 30),
       morningHour: clamp(int(raw.MORNING_HOUR, 7), 0, 23),
       botLang: ['en', 'km', 'both'].indexOf(raw.BOT_LANG) >= 0 ? raw.BOT_LANG : 'both',
+      remindDays: clamp(int(raw.REMIND_DAYS, 7), 1, 31),
     };
   }
 
@@ -236,6 +237,7 @@ var Core = (function () {
       cancelled: 'Booking cancelled',
       today: 'Halls to prepare today',
       ahead: 'Bookings in {n} days',
+      week: 'Bookings for the next {n} days',
       holiday: 'Holiday',
       none: '—',
       days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
@@ -246,6 +248,7 @@ var Core = (function () {
       cancelled: 'ការកក់ត្រូវបានលុបចោល',
       today: 'សាលត្រូវរៀបចំថ្ងៃនេះ',
       ahead: 'ការកក់ {n} ថ្ងៃទៀត',
+      week: 'ការកក់ {n} ថ្ងៃខាងមុខ',
       holiday: 'ថ្ងៃឈប់សម្រាក',
       none: '—',
       days: ['អាទិត្យ', 'ច័ន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍'],
@@ -299,6 +302,47 @@ var Core = (function () {
     };
     return section(o.today, label('today', o.lang)) + '\n\n' +
       section(addDays(o.today, o.noticeDays), label('ahead', o.lang, o.noticeDays));
+  }
+
+  /** Telegram allows 4096 characters; stay below it so the message is never refused. */
+  const MAX_MESSAGE = 3900;
+
+  /**
+   * /remind answer: each day from today for o.days days (today included),
+   * bookings sorted by start time, holidays marked. Cut at a day boundary
+   * with '…' if it would be too long for one Telegram message.
+   */
+  function weekReport(o) {
+    const hallOf = id => o.halls.filter(h => h.id === id)[0] || { id: id };
+    const order = id => { const i = o.halls.findIndex(h => h.id === id); return i < 0 ? 99 : i; };
+    const blocks = ['<b>' + escapeHtml(label('week', o.lang, o.days)) + '</b>'];
+    let size = blocks[0].length;
+    for (let i = 0; i < o.days; i++) {
+      const date = addDays(o.today, i);
+      const hol = o.holidays[date];
+      const list = o.bookings
+        .filter(b => b.status === 'active' && b.date === date)
+        .sort((a, b) => toMinutes(a.start) - toMinutes(b.start) || order(a.hall) - order(b.hall));
+      const lines = ['<b>' + escapeHtml(dateLabel(date, o.lang)) + '</b>' + (list.length ? '' : ': ' + escapeHtml(label('none', o.lang)))];
+      if (hol) lines.push(escapeHtml(label('holiday', o.lang) + ': ' + holidayLabel(hol, o.lang)));
+      list.forEach(b => lines.push('• ' + escapeHtml(hallLabel(hallOf(b.hall), o.lang) + ' ' + b.start + '–' + b.end + ' ' + b.department + ' (' + b.name + ')')));
+      const block = lines.join('\n');
+      if (size + block.length + 2 > MAX_MESSAGE) { blocks.push('…'); break; }
+      blocks.push(block);
+      size += block.length + 2;
+    }
+    return blocks.join('\n\n');
+  }
+
+  /**
+   * Bot command name from a message: "/remind" or "/remind@MyBot ..." -> "remind".
+   * A command addressed to another bot (or to any bot when ours is unknown) -> null.
+   */
+  function parseCommand(text, botUsername) {
+    const m = /^\/([A-Za-z0-9_]{1,32})(?:@([A-Za-z0-9_]{3,64}))?(?:\s|$)/.exec(String(text || '').trim());
+    if (!m) return null;
+    if (m[2] && (!botUsername || m[2].toLowerCase() !== String(botUsername).toLowerCase())) return null;
+    return m[1].toLowerCase();
   }
 
   // -------------------------------------------------------------------- auth
@@ -370,6 +414,8 @@ var Core = (function () {
     escapeHtml: escapeHtml,
     bookingMessage: bookingMessage,
     dailyDigest: dailyDigest,
+    weekReport: weekReport,
+    parseCommand: parseCommand,
     toHex: toHex,
     verifyInitData: verifyInitData,
   };

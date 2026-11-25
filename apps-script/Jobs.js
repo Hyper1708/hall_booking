@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS = [
   ['NOTICE_DAYS', '3'],
   ['MORNING_HOUR', '7'],
   ['BOT_LANG', 'both'],
+  ['REMIND_DAYS', '7'],
 ];
 
 function onOpen() {
@@ -24,6 +25,10 @@ function onOpen() {
     .addItem('Find group chat ID', 'findGroupId')
     .addItem('Sync holidays now', 'syncHolidays')
     .addItem("Post today's list now", 'dailyDigest')
+    .addSeparator()
+    .addItem('Turn on /remind', 'connectBot')
+    .addItem('Check /remind', 'checkBot')
+    .addItem('Turn off /remind', 'disconnectBot')
     .addToUi();
 }
 
@@ -92,6 +97,7 @@ function setup() {
   Object.keys(SHEETS).forEach(name => ensureSheet_(ss, name, SHEETS[name]));
   seed_(ss.getSheetByName('Halls'), DEFAULT_HALLS);
   seed_(ss.getSheetByName('Settings'), DEFAULT_SETTINGS);
+  addMissingSettings_();
   installTriggers_();
   syncHolidays();
   const missing = ['BOT_TOKEN', 'GROUP_CHAT_ID'].filter(k => !prop_(k));
@@ -121,6 +127,18 @@ function seed_(sh, rows) {
   sh.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
 }
 
+/** Add settings that a newer version introduced (e.g. REMIND_DAYS). Existing values stay. */
+function addMissingSettings_() {
+  const have = {};
+  readRows_('Settings').forEach(r => { have[r.key] = true; });
+  const sh = sheet_('Settings');
+  DEFAULT_SETTINGS.filter(s => !have[s[0]]).forEach(s => {
+    const at = sh.getLastRow() + 1;
+    ensureRows_(sh, at);
+    sh.getRange(at, 1, 1, 2).setNumberFormat('@').setValues([s]);
+  });
+}
+
 function installTriggers_() {
   const morningHour = loadAll_().settings.morningHour;
   ScriptApp.getProjectTriggers().forEach(t => {
@@ -133,6 +151,11 @@ function installTriggers_() {
 /** Lists the groups the bot has seen, so you can copy GROUP_CHAT_ID. */
 function findGroupId() {
   const res = tg_('getUpdates', {});
+  if (res && !res.ok && /webhook/i.test(res.description || '')) {
+    say_('/remind is on, so this tool cannot read the group. GROUP_CHAT_ID is now: ' +
+      (prop_('GROUP_CHAT_ID') || 'not set') + '\n\nTo use this tool, click "Turn off /remind" first, then turn it on again after.');
+    return;
+  }
   const chats = {};
   ((res && res.result) || []).forEach(u => {
     const c = (u.message && u.message.chat) || (u.my_chat_member && u.my_chat_member.chat);

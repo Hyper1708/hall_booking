@@ -12,9 +12,20 @@ function doGet() {
 }
 
 function doPost(e) {
+  let body = null;
+  try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { body = null; }
+
+  // A Telegram bot update (webhook, see Bot.js), not a mini app request.
+  if (body && body.update_id !== undefined) {
+    try { handleWebhook_(e, body); } catch (err) { console.error(err && err.stack ? err.stack : String(err)); }
+    // HtmlService answers 200 directly. ContentService would answer with a 302
+    // redirect, which Telegram counts as a failure and sends the update again.
+    return HtmlService.createHtmlOutput('ok');
+  }
+
   let out;
   try {
-    const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (!body) throw new Error('Request body is not JSON.');
     const auth = authenticate_(body.initData);
     out = auth.user ? route_(body, auth.user) : { ok: false, error: auth.error };
   } catch (err) {

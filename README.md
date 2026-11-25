@@ -7,6 +7,7 @@ Book the university's halls from a Telegram group. First come, first served.
 - The **bot** posts in the group when someone books or cancels, and every morning it posts:
   - today's bookings per hall, so the cleaning staff know which halls to prepare;
   - the bookings 3 days ahead.
+- Send **`/remind`** in the group and the bot answers with every booking for the next 7 days, today included.
 - Cambodian public holidays update by themselves every week.
 - English and Khmer, switched with one button. More languages: add a block in `docs/i18n.js`.
 
@@ -28,7 +29,8 @@ Telegram group ── pinned link ──> Mini app (docs/, on GitHub Pages)
 | Rules | `apps-script/Core.js` | Clash check, holiday merge, bot message text, Telegram signature check. No Google services, so it is unit-tested with Node. |
 | API | `apps-script/Code.js` | `list`, `book`, `cancel`. Checks the Telegram signature and group membership on every request. |
 | Sheet | `apps-script/Data.js` | Reads and writes the tabs. |
-| Bot | `apps-script/Telegram.js` | Sends messages. No webhook. |
+| Bot | `apps-script/Telegram.js` | Sends messages, checks group membership. |
+| Bot commands | `apps-script/Bot.js` | `/remind`. Telegram sends group commands to the web app (webhook); only the group gets an answer. |
 | Timers and setup | `apps-script/Jobs.js` | Morning post, holiday sync, sheet menu, first-time setup. |
 | Mini app | `docs/` | The page people use. |
 
@@ -50,7 +52,7 @@ Telegram group ── pinned link ──> Mini app (docs/, on GitHub Pages)
 ### 2. Google Sheet and Apps Script
 1. Create a new Google Sheet, for example "Hall booking".
 2. **Extensions > Apps Script**.
-3. For each file in `apps-script/`, create a script file with the same name (`Core`, `Code`, `Data`, `Telegram`, `Jobs`) and paste the content. Delete the empty `Code.gs` content first.
+3. For each file in `apps-script/`, create a script file with the same name (`Core`, `Code`, `Data`, `Telegram`, `Bot`, `Jobs`) and paste the content. Delete the empty `Code.gs` content first.
 4. **Project Settings** (gear icon) > tick **Show "appsscript.json" manifest file**. Open `appsscript.json` in the editor and replace it with `apps-script/appsscript.json`.
 5. **Project Settings > Script properties > Add script property**: `BOT_TOKEN` = the token from BotFather.
 6. Reload the sheet. A **Hall booking** menu appears. Click **Set up sheets and timers** and allow the permissions. This creates the tabs (`Bookings`, `Halls`, `Holidays`, `Settings`), the morning timer, the weekly holiday timer, and fills the holidays.
@@ -64,7 +66,14 @@ Tip: if you use the command line, [clasp](https://github.com/google/clasp) can p
 3. Copy the web app URL (it ends in `/exec`).
 4. Paste it into `docs/config.js` and commit.
 
-After you change Apps Script code later: **Deploy > Manage deployments > Edit > Version: New version**. The URL stays the same.
+After you change Apps Script code later: **Deploy > Manage deployments > Edit (pencil) > Version: New version > Deploy**. The URL stays the same. Without a new version, the web app keeps running the old code.
+
+### Turn on `/remind` (after step 3)
+1. In the sheet: **Hall booking > Turn on /remind**. Paste the web app URL (the one in `config.js`).
+2. In the group, send `/remind`. The bot answers within a few seconds.
+3. No answer? **Hall booking > Check /remind** shows Telegram's own error report.
+
+How it stays safe: Telegram's address for the web app carries a secret (`HOOK_SECRET`, made for you), so nobody else can send fake commands. The bot answers only in the group in `GROUP_CHAT_ID`, and answers each message once even if Telegram sends it twice. While `/remind` is on, **Find group chat ID** cannot work (Telegram allows only one of the two); turn `/remind` off first if you need it.
 
 ### 4. Publish the mini app page
 1. On GitHub, make this repository **public** (free GitHub Pages needs it). No secret is in the code.
@@ -102,6 +111,7 @@ After you change Apps Script code later: **Deploy > Manage deployments > Edit > 
 | `NOTICE_DAYS` | 3 | The morning post also lists bookings this many days ahead. |
 | `MORNING_HOUR` | 7 | Hour of the morning post. After changing it, run **Set up sheets and timers** again. |
 | `BOT_LANG` | both | Bot message language: `km`, `en` or `both`. |
+| `REMIND_DAYS` | 7 | How many days `/remind` lists, today included. Max 31. |
 
 ## Holidays
 

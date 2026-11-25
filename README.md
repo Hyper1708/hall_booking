@@ -7,7 +7,7 @@ Book the university's halls from a Telegram group. First come, first served.
 - The **bot** posts in the group when someone books or cancels, and every morning it posts:
   - today's bookings per hall, so the cleaning staff know which halls to prepare;
   - the bookings 3 days ahead.
-- Send **`/remind`** in the group and the bot answers with every booking for the next 7 days, today included.
+- Send **`/remind`** (or just `remind` / `រំលឹក`) in the group and the bot answers, within about a minute, with every booking for the next 7 days, today included.
 - Cambodian public holidays update by themselves every week.
 - English and Khmer, switched with one button. More languages: add a block in `docs/i18n.js`.
 
@@ -30,7 +30,7 @@ Telegram group ── pinned link ──> Mini app (docs/, on GitHub Pages)
 | API | `apps-script/Code.js` | `list`, `book`, `cancel`. Checks the Telegram signature and group membership on every request. |
 | Sheet | `apps-script/Data.js` | Reads and writes the tabs. |
 | Bot | `apps-script/Telegram.js` | Sends messages, checks group membership. |
-| Bot commands | `apps-script/Bot.js` | `/remind`. Telegram sends group commands to the web app (webhook); only the group gets an answer. |
+| Bot commands | `apps-script/Bot.js` | `/remind` and keywords. A timer asks Telegram for new messages every minute; only the group gets an answer. |
 | Timers and setup | `apps-script/Jobs.js` | Morning post, holiday sync, sheet menu, first-time setup. |
 | Mini app | `docs/` | The page people use. |
 
@@ -68,12 +68,15 @@ Tip: if you use the command line, [clasp](https://github.com/google/clasp) can p
 
 After you change Apps Script code later: **Deploy > Manage deployments > Edit (pencil) > Version: New version > Deploy**. The URL stays the same. Without a new version, the web app keeps running the old code.
 
-### Turn on `/remind` (after step 3)
-1. In the sheet: **Hall booking > Turn on /remind**. Paste the web app URL (the one in `config.js`).
-2. In the group, send `/remind`. The bot answers within a few seconds.
-3. No answer? **Hall booking > Check /remind** shows Telegram's own error report.
+### Turn on `/remind`
+1. In the sheet: **Hall booking > Turn on /remind**. This starts a timer that checks Telegram for new messages once a minute. No new deployment is needed.
+2. For keywords without `/` (`remind`, `រំលឹក`): make the bot a **group admin** (no rights needed). Telegram only shows a bot the messages that start with `/` unless it is an admin.
+3. In the group, send `/remind` or `remind`. The bot answers within about a minute.
+4. No answer after 2 minutes? **Hall booking > Check /remind** shows the last check time and the last error.
 
-How it stays safe: Telegram's address for the web app carries a secret (`HOOK_SECRET`, made for you), so nobody else can send fake commands. The bot answers only in the group in `GROUP_CHAT_ID`, and answers each message once even if Telegram sends it twice. While `/remind` is on, **Find group chat ID** cannot work (Telegram allows only one of the two); turn `/remind` off first if you need it.
+Why a timer and not a Telegram webhook: Apps Script answers every web app request with a 302 redirect, which Telegram counts as a failed delivery and retries. Asking Telegram for new messages avoids that, needs no public entry point, and runs the saved code without a redeploy. The cost is up to a minute of delay, and about 1,440 short runs a day, well inside Apps Script's free limits.
+
+Safety: the bot answers only in the group in `GROUP_CHAT_ID`, only to `/remind` or a message that is exactly a keyword, and handles each message once.
 
 ### 4. Publish the mini app page
 1. On GitHub, make this repository **public** (free GitHub Pages needs it). No secret is in the code.
@@ -112,6 +115,7 @@ How it stays safe: Telegram's address for the web app carries a secret (`HOOK_SE
 | `MORNING_HOUR` | 7 | Hour of the morning post. After changing it, run **Set up sheets and timers** again. |
 | `BOT_LANG` | both | Bot message language: `km`, `en` or `both`. |
 | `REMIND_DAYS` | 7 | How many days `/remind` lists, today included. Max 31. |
+| `REMIND_WORDS` | remind, រំលឹក | Keywords that work like `/remind`, comma-separated. The message must be only the keyword. Leave empty to turn keywords off. |
 
 ## Holidays
 

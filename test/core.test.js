@@ -21,8 +21,13 @@ const req = (extra) => Object.assign({ hall: 'H2', date: '2026-12-02', start: '1
 const codes = r => r.reasons.map(x => x.code);
 
 test('settings defaults and bounds', () => {
-  assert.deepEqual(settings, { openHour: 7, closeHour: 18, maxDaysAhead: 180, noticeDays: 3, morningHour: 7, botLang: 'both', remindDays: 7 });
+  assert.deepEqual(settings, {
+    openHour: 7, closeHour: 18, maxDaysAhead: 180, noticeDays: 3, morningHour: 7, botLang: 'both',
+    remindDays: 7, remindWords: ['remind', 'រំលឹក'],
+  });
   assert.equal(Core.normalizeSettings({ REMIND_DAYS: '99' }).remindDays, 31);
+  assert.deepEqual(Core.normalizeSettings({ REMIND_WORDS: ' Week ,, ថ្ងៃ ' }).remindWords, ['week', 'ថ្ងៃ']);
+  assert.deepEqual(Core.normalizeSettings({ REMIND_WORDS: '' }).remindWords, [], 'empty value turns keywords off');
   const s = Core.normalizeSettings({ OPEN_HOUR: '20', CLOSE_HOUR: '5', BOT_LANG: 'fr' });
   assert.equal(s.openHour, 20);
   assert.equal(s.closeHour, 21);
@@ -245,6 +250,16 @@ test('command parsing', () => {
   assert.equal(Core.parseCommand('please /remind', 'HRU_info_bot'), null);
   assert.equal(Core.parseCommand('/reminder', 'HRU_info_bot'), 'reminder');
   assert.equal(Core.parseCommand(undefined, 'x'), null);
+});
+
+test('remind request: command or a message that is exactly a keyword', () => {
+  const words = settings.remindWords;
+  const yes = ['/remind', '/remind@HRU_info_bot', 'remind', ' Remind! ', 'REMIND.', 'រំលឹក', 'រំលឹក។', '​រំលឹក'];
+  const no = ['please remind me', 'remind me', '/remind@OtherBot', 'reminder', '', 'រំលឹកខ្ញុំ', 'ok'];
+  yes.forEach(t => assert.equal(Core.isRemindRequest(t, 'HRU_info_bot', words), true, JSON.stringify(t)));
+  no.forEach(t => assert.equal(Core.isRemindRequest(t, 'HRU_info_bot', words), false, JSON.stringify(t)));
+  assert.equal(Core.isRemindRequest('remind', 'HRU_info_bot', []), false, 'keywords off');
+  assert.equal(Core.isRemindRequest('/remind', 'HRU_info_bot', []), true, 'command still works');
 });
 
 // ---------------------------------------------------------------------- auth

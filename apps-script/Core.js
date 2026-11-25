@@ -51,6 +51,12 @@ var Core = (function () {
       .trim();
   }
 
+  /** Lowercase, no zero-width characters, no spaces or end punctuation around it. */
+  function normalizeWord(s) {
+    return String(s == null ? '' : s).replace(/[​-‍﻿]/g, '').trim()
+      .replace(/[.!?។៕\s]+$/, '').toLowerCase();
+  }
+
   /** Settings tab (key -> string) -> numbers with safe bounds. */
   function normalizeSettings(raw) {
     raw = raw || {};
@@ -65,6 +71,9 @@ var Core = (function () {
       morningHour: clamp(int(raw.MORNING_HOUR, 7), 0, 23),
       botLang: ['en', 'km', 'both'].indexOf(raw.BOT_LANG) >= 0 ? raw.BOT_LANG : 'both',
       remindDays: clamp(int(raw.REMIND_DAYS, 7), 1, 31),
+      // Comma-separated. A missing row means the defaults; an empty value means no keywords.
+      remindWords: String(raw.REMIND_WORDS == null ? 'remind, រំលឹក' : raw.REMIND_WORDS)
+        .split(',').map(normalizeWord).filter(Boolean),
     };
   }
 
@@ -345,6 +354,17 @@ var Core = (function () {
     return m[1].toLowerCase();
   }
 
+  /**
+   * Does this message ask for the week report? Either the /remind command, or a
+   * message that is exactly one of the keywords ("remind", "Remind!", "រំលឹក").
+   * A sentence that only contains a keyword does not count.
+   */
+  function isRemindRequest(text, botUsername, keywords) {
+    if (parseCommand(text, botUsername) === 'remind') return true;
+    const w = normalizeWord(text);
+    return !!w && (keywords || []).indexOf(w) >= 0;
+  }
+
   // -------------------------------------------------------------------- auth
 
   /** Byte array (signed, as Apps Script returns, or unsigned) -> lowercase hex. */
@@ -416,6 +436,7 @@ var Core = (function () {
     dailyDigest: dailyDigest,
     weekReport: weekReport,
     parseCommand: parseCommand,
+    isRemindRequest: isRemindRequest,
     toHex: toHex,
     verifyInitData: verifyInitData,
   };

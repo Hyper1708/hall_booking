@@ -43,12 +43,17 @@ function readRows_(name) {
   });
 }
 
-/** Everything a request needs, read once. */
-function loadAll_() {
+/** The Settings tab only (cheaper than loadAll_). */
+function settings_() {
   const raw = {};
   readRows_('Settings').forEach(r => { if (r.key) raw[r.key] = r.value; });
+  return Core.normalizeSettings(raw);
+}
+
+/** Everything a request needs, read once. */
+function loadAll_() {
   return {
-    settings: Core.normalizeSettings(raw),
+    settings: settings_(),
     halls: readRows_('Halls')
       .filter(h => h.id)
       .map(h => ({ id: h.id, name_en: h.name_en, name_km: h.name_km, active: Core.isOn(h.active) })),

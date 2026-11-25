@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = [
   ['MORNING_HOUR', '7'],
   ['BOT_LANG', 'both'],
   ['REMIND_DAYS', '7'],
+  ['REMIND_WORDS', 'remind, រំលឹក'],
 ];
 
 function onOpen() {
@@ -152,8 +153,7 @@ function installTriggers_() {
 function findGroupId() {
   const res = tg_('getUpdates', {});
   if (res && !res.ok && /webhook/i.test(res.description || '')) {
-    say_('/remind is on, so this tool cannot read the group. GROUP_CHAT_ID is now: ' +
-      (prop_('GROUP_CHAT_ID') || 'not set') + '\n\nTo use this tool, click "Turn off /remind" first, then turn it on again after.');
+    say_('Telegram still has an old webhook set. Click "Turn on /remind" (or "Turn off /remind") first, then try again.');
     return;
   }
   const chats = {};

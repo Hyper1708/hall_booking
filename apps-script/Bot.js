@@ -1,28 +1,54 @@
 /**
- * Bot commands (/remind). Telegram sends group messages that start with "/"
- * to the web app (a webhook); doPost in Code.js passes them here.
+ * Bot commands (/remind), checked once a minute by a timer (pollBot).
  *
- * Safety:
- * - The webhook URL carries a secret (HOOK_SECRET). Requests without it are ignored,
- *   so nobody can post fake commands to the public web app URL.
- * - Only the hall booking group (GROUP_CHAT_ID) gets an answer.
- * - Telegram may send the same update twice; each update_id is handled once.
+ * Why a timer and not a Telegram webhook: Apps Script answers every web app
+ * request with a 302 redirect, which Telegram counts as a failed delivery.
+ * Asking Telegram for new messages (getUpdates) avoids that, needs no public
+ * entry point, and runs the saved code without a new deployment.
+ * The cost: an answer can take up to about a minute.
+ *
+ * Safety: only the hall booking group (GROUP_CHAT_ID) gets an answer, and
+ * each update is handled once (UPDATE_OFFSET moves past it before handling).
  */
-const WEBAPP_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/;
+const POLL_HANDLER = 'pollBot';
 
-function handleWebhook_(e, update) {
-  const secret = prop_('HOOK_SECRET');
-  if (!secret || !e || !e.parameter || e.parameter.hook !== secret) return;
-
+/** Timer, every minute: fetch new messages and answer /remind. */
+function pollBot() {
   const cache = CacheService.getScriptCache();
-  const seen = 'update:' + update.update_id;
-  if (cache.get(seen)) return;
-  cache.put(seen, '1', 21600);
+  if (cache.get('polling')) return;          // the previous run is still busy
+  cache.put('polling', '1', 50);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const offset = Number(props.getProperty('UPDATE_OFFSET') || 0);
+    const res = tg_('getUpdates', { offset: offset, timeout: 0, allowed_updates: ['message'] });
+    props.setProperty('LAST_POLL', new Date().toISOString());
+    if (!res || !res.ok) {
+      props.setProperty('LAST_POLL_ERROR', (res && res.description) || 'no answer from Telegram');
+      return;
+    }
+    props.deleteProperty('LAST_POLL_ERROR');
+    if (!res.result.length) return;
+    const keywords = settings_().remindWords;
+    res.result.forEach(update => {
+      // Move past this update first, so a failing one is never handled again and again.
+      props.setProperty('UPDATE_OFFSET', String(update.update_id + 1));
+      try { handleUpdate_(update, keywords); } catch (e) { console.error(e && e.stack ? e.stack : String(e)); }
+    });
+  } finally {
+    cache.remove('polling');
+  }
+}
 
+/**
+ * Answer /remind, or a message that is exactly a keyword (REMIND_WORDS), in the group.
+ * Everything else is ignored. Keywords reach the bot only if it is a group admin
+ * (otherwise Telegram sends a bot only the messages that start with "/").
+ */
+function handleUpdate_(update, keywords) {
   const msg = update.message;
   if (!msg || typeof msg.text !== 'string' || !msg.chat) return;
   if (String(msg.chat.id) !== String(prop_('GROUP_CHAT_ID'))) return;
-  if (Core.parseCommand(msg.text, prop_('BOT_USERNAME')) === 'remind') sendWeekReport_(msg.message_id);
+  if (Core.isRemindRequest(msg.text, prop_('BOT_USERNAME'), keywords)) sendWeekReport_(msg.message_id);
 }
 
 /** Post the next REMIND_DAYS days of bookings to the group, as a reply when replyTo is given. */
@@ -45,65 +71,53 @@ function sendWeekReport_(replyTo) {
   tg_('sendMessage', payload);
 }
 
-/** Menu: Turn on /remind. Asks for the web app URL, then connects Telegram to it. */
-function connectBot() {
-  const ui = SpreadsheetApp.getUi();
-  const asked = ui.prompt('Turn on /remind',
-    'Paste the web app URL (the same one as in config.js, ending in /exec):', ui.ButtonSet.OK_CANCEL);
-  if (asked.getSelectedButton() !== ui.Button.OK) return;
-  const url = asked.getResponseText().trim();
-  if (!WEBAPP_URL_RE.test(url)) {
-    ui.alert('That is not a web app URL. It starts with https://script.google.com/macros/s/ and ends with /exec.');
-    return;
-  }
-  if (!prop_('GROUP_CHAT_ID')) { ui.alert('Set GROUP_CHAT_ID in Script Properties first.'); return; }
+function pollTriggers_() {
+  return ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === POLL_HANDLER);
+}
 
-  const props = PropertiesService.getScriptProperties();
-  let secret = props.getProperty('HOOK_SECRET');
-  if (!secret) {
-    secret = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-    props.setProperty('HOOK_SECRET', secret);
-  }
+/** Menu: Turn on /remind. Safe to run again. */
+function connectBot() {
+  if (!prop_('GROUP_CHAT_ID')) { say_('Set GROUP_CHAT_ID in Script Properties first.'); return; }
   const me = tg_('getMe', {});
-  if (!me || !me.ok) { ui.alert('Telegram did not answer. Check BOT_TOKEN in Script Properties.'); return; }
+  if (!me || !me.ok) { say_('Telegram did not answer. Check BOT_TOKEN in Script Properties.'); return; }
+  const props = PropertiesService.getScriptProperties();
   props.setProperty('BOT_USERNAME', me.result.username);
 
-  const hook = tg_('setWebhook', {
-    url: url + '?hook=' + secret,
-    allowed_updates: ['message'],
-    drop_pending_updates: true,
-  });
-  if (!hook || !hook.ok) {
-    ui.alert('Telegram did not accept the web app URL: ' + ((hook && hook.description) || 'no answer'));
-    return;
-  }
+  // Remove an old webhook (it blocks getUpdates) and drop messages it left waiting.
+  tg_('deleteWebhook', { drop_pending_updates: true });
+  props.deleteProperty('HOOK_SECRET');
+  props.deleteProperty('UPDATE_OFFSET');
+
+  pollTriggers_().forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger(POLL_HANDLER).timeBased().everyMinutes(1).create();
+
   addMissingSettings_();
   const days = loadAll_().settings.remindDays;
   tg_('setMyCommands', { commands: [{ command: 'remind', description: 'Bookings for the next ' + days + ' days' }] });
   tg_('setMyCommands', { commands: [{ command: 'remind', description: 'ការកក់ ' + days + ' ថ្ងៃខាងមុខ' }], language_code: 'km' });
-  ui.alert('/remind is on.\n\nIn the group, send /remind or /remind@' + me.result.username +
-    '\n\nIf the bot does not answer, use "Check /remind".');
+  const words = settings_().remindWords;
+  say_('/remind is on.\n\nIn the group, send /remind' +
+    (words.length ? ' or just: ' + words.join(' / ') + '\n(For words without "/", make the bot a group admin.)' : '') +
+    '\n\nThe bot checks once a minute, so the answer can take up to about a minute.');
 }
 
-/** Menu: Check /remind. Shows Telegram's own report on the webhook. Never shows the secret URL. */
+/** Menu: Check /remind. */
 function checkBot() {
+  const on = pollTriggers_().length > 0;
+  const last = prop_('LAST_POLL');
+  const err = prop_('LAST_POLL_ERROR');
+  const lines = [on ? '/remind is ON (checks every minute).' : '/remind is OFF. Use "Turn on /remind".'];
+  if (on) lines.push('Last check: ' + (last ? new Date(last).toLocaleString() : 'not yet, wait a minute'));
+  if (err) lines.push('Last error: ' + err);
+  else if (on && last) lines.push('No errors.');
   const info = tg_('getWebhookInfo', {});
-  if (!info || !info.ok) { say_('Telegram did not answer. Check BOT_TOKEN in Script Properties.'); return; }
-  const r = info.result;
-  const lines = [
-    r.url ? '/remind is ON.' : '/remind is OFF. Use "Turn on /remind".',
-    'Messages waiting at Telegram: ' + (r.pending_update_count || 0),
-  ];
-  if (r.last_error_date) {
-    lines.push('Last error: ' + r.last_error_message + ' (' + new Date(r.last_error_date * 1000).toLocaleString() + ')');
-  } else if (r.url) {
-    lines.push('No errors.');
-  }
+  if (info && info.ok && info.result.url) lines.push('Problem: an old webhook is still set. Click "Turn on /remind" again.');
   say_(lines.join('\n'));
 }
 
 /** Menu: Turn off /remind. The app, bookings and morning posts keep working. */
 function disconnectBot() {
-  const res = tg_('deleteWebhook', { drop_pending_updates: true });
-  say_(res && res.ok ? '/remind is off.' : 'Telegram did not answer. Try again.');
+  pollTriggers_().forEach(t => ScriptApp.deleteTrigger(t));
+  tg_('deleteWebhook', { drop_pending_updates: true });
+  say_('/remind is off.');
 }
